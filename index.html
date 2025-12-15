@@ -2,141 +2,308 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <title>Bus 143 - Secure Board</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strahov Express GPS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
         body {
-            margin: 0; padding: 20px;
+            margin: 0; padding: 15px;
             background-color: #121212; color: #e0e0e0;
-            font-family: 'Segoe UI', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
             display: flex; flex-direction: column; align-items: center; gap: 15px;
+            -webkit-tap-highlight-color: transparent;
         }
-        h1 { color: #00d2ff; margin: 0; font-size: 22px; text-transform: uppercase; }
+
+        h1 { color: #00d2ff; margin: 10px 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Kontejner pro dynamické karty */
+        #cards-container { width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px; }
+
         .card {
-            background: #1e1e1e; width: 100%; max-width: 450px;
-            border-radius: 8px; border: 1px solid #333; overflow: hidden;
+            background: #1e1e1e; width: 100%;
+            border-radius: 12px; border: 1px solid #333; overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            transition: transform 0.3s ease, border-color 0.3s ease;
         }
+
+        /* Styl pro nejbližší zastávku */
+        .card.nearest {
+            border: 2px solid #00d2ff;
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.2);
+            order: -1; /* Vždy nahoře */
+        }
+
         .card-header {
             background: #252525; padding: 12px 15px; border-bottom: 1px solid #333;
-            display: flex; justify-content: space-between;
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .stop-name { font-weight: bold; color: #fff; }
-        .stop-dir { font-size: 11px; color: #aaa; text-transform: uppercase; }
-        .list { min-height: 60px; padding: 10px; }
-        .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2a2a2a; }
+
+        .stop-name { font-weight: bold; font-size: 16px; color: #fff; }
+        .stop-dir { font-size: 11px; color: #aaa; text-transform: uppercase; margin-top: 2px; }
+        .badge-nearest { 
+            display: none; background: #00d2ff; color: #000; font-size: 10px; 
+            font-weight: bold; padding: 3px 6px; border-radius: 4px; text-transform: uppercase;
+        }
+        .card.nearest .badge-nearest { display: block; }
+
+        .list { min-height: 60px; padding: 5px 0; }
+        .row { display: flex; justify-content: space-between; padding: 10px 15px; border-bottom: 1px solid #2a2a2a; }
         .row:last-child { border-bottom: none; }
-        .bus-number { background: #007bff; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-right: 8px; }
-        .time-big { font-weight: bold; color: #4cd964; }
-        .msg { text-align: center; color: #666; font-style: italic; }
+        
+        .bus-number { background: #007bff; color: white; padding: 3px 8px; border-radius: 6px; font-weight: bold; font-size: 14px; margin-right: 8px; }
+        .headsign { color: #ccc; font-size: 13px; }
+
+        .time-group { text-align: right; }
+        .time-big { font-weight: bold; font-size: 18px; color: #4cd964; }
+        .time-small { font-size: 12px; color: #888; margin-top: 2px; }
+        
+        .delay-late { color: #ff4444; font-weight: bold; }
+        .msg { text-align: center; padding: 20px; color: #666; font-style: italic; font-size: 13px; }
         .error { color: #ff4444; }
+
+        #status-bar { font-size: 11px; color: #555; margin-top: 10px; display: flex; align-items: center; gap: 5px;}
+        .dot { width: 8px; height: 8px; background: #555; border-radius: 50%; }
+        .dot.active { background: #4cd964; box-shadow: 0 0 5px #4cd964; }
+
+        /* Animace pro TEĎ */
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <h1>🚌 Linka 143</h1>
+    <h1>🚌 Linka 143 <span style="font-size:0.6em; color:#555">GPS</span></h1>
 
-    <div class="card">
-        <div class="card-header"><div><div class="stop-name">Dejvická</div><div class="stop-dir">Směr: Strahov</div></div></div>
-        <div id="board-dejvicka" class="list"><div class="msg">Načítám...</div></div>
+    <div id="cards-container">
+        <div class="msg">Zjišťuji polohu a načítám data...</div>
     </div>
 
-    <div class="card">
-        <div class="card-header"><div><div class="stop-name">Vítězné náměstí</div><div class="stop-dir">Směr: Strahov</div></div></div>
-        <div id="board-kulatak" class="list"><div class="msg">Načítám...</div></div>
-    </div>
-
-    <div class="card">
-        <div class="card-header"><div><div class="stop-name">Koleje Strahov</div><div class="stop-dir">Směr: Dejvická</div></div></div>
-        <div id="board-strahov" class="list"><div class="msg">Načítám...</div></div>
+    <div id="status-bar">
+        <div class="dot" id="gps-dot"></div>
+        <span id="status-text">Čekám na GPS...</span>
     </div>
 
     <script>
-        
+        // === KONFIGURACE ===
         const PROXY_URL = '/.netlify/functions/api'; 
-
-        const CONFIG = [
-            { id: 'board-dejvicka', stop: 'Dejvická', filterDir: 'Strahov' },
-            { id: 'board-kulatak', stop: 'Vítězné náměstí', filterDir: 'Strahov' },
-            { id: 'board-strahov', stop: 'Koleje Strahov', filterDir: 'Dejvická' }
+        
+        // Zastávky včetně GPS souřadnic
+        let STOPS = [
+            { 
+                id: 'dejvicka', 
+                name: 'Dejvická', 
+                dir: 'Strahov', // Filtr směru
+                lat: 50.100900, 
+                lon: 14.397078,
+                data: [] // Tady se uloží stažená data
+            },
+            { 
+                id: 'kulatak', 
+                name: 'Vítězné náměstí', 
+                dir: 'Strahov', 
+                lat: 50.098800, 
+                lon: 14.396349,
+                data: []
+            },
+            { 
+                id: 'strahov', 
+                name: 'Koleje Strahov', 
+                dir: 'Dejvická', 
+                lat: 50.076632, 
+                lon: 14.384214,
+                data: []
+            }
         ];
 
-        async function updateData() {
-            for (const item of CONFIG) {
-                await fetchDepartures(item);
-            }
+        // === 1. START APLIKACE ===
+        async function init() {
+            renderCards(); // Vykreslit prázdné karty
+            getUserLocation(); // Zkusit najít polohu
+            fetchAllData(); // Stáhnout data
+            
+            // Intervaly
+            setInterval(fetchAllData, 30000); // Data každých 30s
+            setInterval(updateTimeUI, 1000); // Odpočet každou sekundu
         }
 
-        async function fetchDepartures(config) {
-            const container = document.getElementById(config.id);
-            
-            const url = `${PROXY_URL}?names=${encodeURIComponent(config.stop)}&mode=departures&limit=30`;
-
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("Chyba serveru");
-                
-                const json = await response.json();
-                const rawData = json.departures || (Array.isArray(json) ? json : []);
-
-                const filtered = rawData.filter(d => {
-                    const is143 = (d.route?.short_name === "143");
-                    const isDir = (d.trip?.headsign || "").toLowerCase().includes(config.filterDir.toLowerCase());
-                    return is143 && isDir;
-                });
-
-                renderList(container, filtered);
-            } catch (error) {
-                console.error(error);
-                container.innerHTML = `<div class="msg error">Chyba načítání</div>`;
+        // === 2. GEOLOKACE A ŘAZENÍ ===
+        function getUserLocation() {
+            if (!navigator.geolocation) {
+                updateStatus("GPS nedostupné", false);
+                return;
             }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    updateStatus("GPS Aktivní", true);
+                    sortStopsByDistance(pos.coords.latitude, pos.coords.longitude);
+                },
+                (err) => {
+                    console.warn(err);
+                    updateStatus("GPS vypnuto - ukazuji vše", false);
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
         }
 
-        function renderList(container, data) {
-            container.innerHTML = "";
-            if (data.length === 0) { container.innerHTML = '<div class="msg">Žádné spoje</div>'; return; }
-            
-            data.sort((a, b) => new Date(a.departure_timestamp.predicted) - new Date(b.departure_timestamp.predicted));
-            
-            data.slice(0, 3).forEach(d => {
-                const predictedTime = new Date(d.departure_timestamp.predicted);
-                const now = new Date();
-                
-                const diffMs = predictedTime - now;
-                const minutesLeft = Math.floor(diffMs / 60000);
+        function sortStopsByDistance(userLat, userLon) {
+            // Výpočet vzdálenosti pro každou zastávku
+            STOPS.forEach(stop => {
+                stop.distance = getDistanceFromLatLonInKm(userLat, userLon, stop.lat, stop.lon);
+            });
 
-                const timeStr = predictedTime.toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'});
+            // Seřadit: nejmenší vzdálenost první
+            STOPS.sort((a, b) => a.distance - b.distance);
 
-                let delayMin = 0;
-                if (d.delay && typeof d.delay.minutes === 'number') delayMin = d.delay.minutes;
-                
-                let delayHtml = "";
-                let timeColor = "#4cd964";
-
-                if (delayMin > 1) {
-                    delayHtml = `<span style="color:#ff4444; font-weight:bold">(+${delayMin} min)</span>`;
-                    timeColor = "#ff4444";
+            // Překreslit pořadí karet (jen v DOMu)
+            const container = document.getElementById('cards-container');
+            STOPS.forEach((stop, index) => {
+                const card = document.getElementById(`card-${stop.id}`);
+                if (card) {
+                    container.appendChild(card); // Přesun na konec = řazení
+                    
+                    // Označit nejbližší (pokud je blíž než 1km)
+                    if (index === 0 && stop.distance < 1.5) {
+                        card.classList.add('nearest');
+                    } else {
+                        card.classList.remove('nearest');
+                    }
                 }
-
-                let relativeText = `za ${minutesLeft} min`;
-                if (minutesLeft <= 0) relativeText = "<b style='color:#fff'>TEĎ</b>";
-                if (minutesLeft < -1) relativeText = "Odjel";
-
-                container.innerHTML += `
-                    <div class="row">
-                        <div>
-                            <span class="bus-number">143</span> 
-                            <small style="color:#bbb">${d.trip.headsign}</small>
-                        </div>
-                        <div style="text-align:right">
-                            <div class="time-big" style="color:${timeColor}">${timeStr}</div>
-                            <div class="time-small">${relativeText} ${delayHtml}</div>
-                        </div>
-                    </div>`;
             });
         }
 
-        updateData();
-        setInterval(updateData, 30000);
+        // Haversine formula (matematika pro vzdálenost GPS)
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            var R = 6371; // Radius Země v km
+            var dLat = deg2rad(lat2-lat1);  
+            var dLon = deg2rad(lon2-lon1); 
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+            var d = R * c; 
+            return d;
+        }
+        function deg2rad(deg) { return deg * (Math.PI/180); }
+
+        function updateStatus(text, active) {
+            document.getElementById('status-text').innerText = text;
+            const dot = document.getElementById('gps-dot');
+            if(active) dot.classList.add('active'); else dot.classList.remove('active');
+        }
+
+        // === 3. STAHOVÁNÍ DAT ===
+        async function fetchAllData() {
+            for (let stop of STOPS) {
+                fetchStopData(stop);
+            }
+        }
+
+        async function fetchStopData(stop) {
+            const url = `${PROXY_URL}?names[]=${encodeURIComponent(stop.name)}&mode=departures&limit=30`;
+            try {
+                const res = await fetch(url);
+                const json = await res.json();
+                const raw = json.departures || (Array.isArray(json) ? json : []);
+                
+                // Filtrace
+                stop.data = raw.filter(d => {
+                    const is143 = (d.route?.short_name === "143");
+                    const isDir = (d.trip?.headsign || "").toLowerCase().includes(stop.dir.toLowerCase());
+                    return is143 && isDir;
+                });
+                
+                renderStopContent(stop);
+
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // === 4. VYKRESLOVÁNÍ ===
+        function renderCards() {
+            const container = document.getElementById('cards-container');
+            container.innerHTML = "";
+            
+            STOPS.forEach(stop => {
+                const html = `
+                <div class="card" id="card-${stop.id}">
+                    <div class="card-header">
+                        <div>
+                            <div class="stop-name">${stop.name}</div>
+                            <div class="stop-dir">Směr: ${stop.dir}</div>
+                        </div>
+                        <div class="badge-nearest">📍 ZDE</div>
+                    </div>
+                    <div class="list" id="list-${stop.id}">
+                        <div class="msg">Načítám...</div>
+                    </div>
+                </div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        function renderStopContent(stop) {
+            const list = document.getElementById(`list-${stop.id}`);
+            if (!stop.data || stop.data.length === 0) {
+                list.innerHTML = '<div class="msg">Žádné spoje v dohledu.</div>';
+                return;
+            }
+
+            // Seřadit podle času
+            stop.data.sort((a, b) => new Date(a.departure_timestamp.predicted) - new Date(b.departure_timestamp.predicted));
+
+            let html = "";
+            stop.data.slice(0, 3).forEach(d => {
+                // Výpočty si uložíme do atributů pro updateTimeUI
+                const predicted = new Date(d.departure_timestamp.predicted).toISOString();
+                const delay = (d.delay && d.delay.minutes) ? d.delay.minutes : 0;
+                
+                // Statické HTML (čas se dopočítá v updateTimeUI)
+                let delayHtml = "";
+                let color = "#4cd964";
+                if(delay > 1) { 
+                    delayHtml = `<span class="delay-late">(+${delay} min)</span>`;
+                    color = "#ff4444";
+                }
+
+                html += `
+                <div class="row" data-time="${predicted}">
+                    <div>
+                        <span class="bus-number">143</span> 
+                        <span class="headsign">${d.trip.headsign}</span>
+                    </div>
+                    <div class="time-group">
+                        <div class="time-big" style="color:${color}">
+                            ${new Date(predicted).toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'})}
+                        </div>
+                        <div class="time-small">
+                            <span class="countdown">...</span> ${delayHtml}
+                        </div>
+                    </div>
+                </div>`;
+            });
+            list.innerHTML = html;
+            updateTimeUI(); // Hned přepočítat
+        }
+
+        // Funkce pro "tikatka" (odpočet) bez nutnosti stahovat data
+        function updateTimeUI() {
+            const now = new Date();
+            document.querySelectorAll('.row').forEach(row => {
+                const predicted = new Date(row.getAttribute('data-time'));
+                const diff = Math.floor((predicted - now) / 60000);
+                const span = row.querySelector('.countdown');
+                
+                if (span) {
+                    if (diff <= 0) span.innerHTML = "<b style='color:#fff; animation: blink 1s infinite'>TEĎ</b>";
+                    else span.innerText = `za ${diff} min`;
+                }
+            });
+        }
+
+        // Spustit
+        init();
+
     </script>
 </body>
 </html>
