@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Bus 143 - Secure Board</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0; padding: 20px;
+            background-color: #121212; color: #e0e0e0;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+        }
+        h1 { color: #00d2ff; margin: 0; font-size: 22px; text-transform: uppercase; }
+        .card {
+            background: #1e1e1e; width: 100%; max-width: 450px;
+            border-radius: 8px; border: 1px solid #333; overflow: hidden;
+        }
+        .card-header {
+            background: #252525; padding: 12px 15px; border-bottom: 1px solid #333;
+            display: flex; justify-content: space-between;
+        }
+        .stop-name { font-weight: bold; color: #fff; }
+        .stop-dir { font-size: 11px; color: #aaa; text-transform: uppercase; }
+        .list { min-height: 60px; padding: 10px; }
+        .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2a2a2a; }
+        .row:last-child { border-bottom: none; }
+        .bus-number { background: #007bff; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-right: 8px; }
+        .time-big { font-weight: bold; color: #4cd964; }
+        .msg { text-align: center; color: #666; font-style: italic; }
+        .error { color: #ff4444; }
+    </style>
+</head>
+<body>
+
+    <h1>🚌 Linka 143</h1>
+
+    <div class="card">
+        <div class="card-header"><div><div class="stop-name">Dejvická</div><div class="stop-dir">Směr: Strahov</div></div></div>
+        <div id="board-dejvicka" class="list"><div class="msg">Načítám...</div></div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><div><div class="stop-name">Vítězné náměstí</div><div class="stop-dir">Směr: Strahov</div></div></div>
+        <div id="board-kulatak" class="list"><div class="msg">Načítám...</div></div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><div><div class="stop-name">Koleje Strahov</div><div class="stop-dir">Směr: Dejvická</div></div></div>
+        <div id="board-strahov" class="list"><div class="msg">Načítám...</div></div>
+    </div>
+
+    <script>
+        
+        const PROXY_URL = '/.netlify/functions/api'; 
+
+        const CONFIG = [
+            { id: 'board-dejvicka', stop: 'Dejvická', filterDir: 'Strahov' },
+            { id: 'board-kulatak', stop: 'Vítězné náměstí', filterDir: 'Strahov' },
+            { id: 'board-strahov', stop: 'Koleje Strahov', filterDir: 'Dejvická' }
+        ];
+
+        async function updateData() {
+            for (const item of CONFIG) {
+                await fetchDepartures(item);
+            }
+        }
+
+        async function fetchDepartures(config) {
+            const container = document.getElementById(config.id);
+            
+            const url = `${PROXY_URL}?names=${encodeURIComponent(config.stop)}&mode=departures&limit=30`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Chyba serveru");
+                
+                const json = await response.json();
+                const rawData = json.departures || (Array.isArray(json) ? json : []);
+
+                const filtered = rawData.filter(d => {
+                    const is143 = (d.route?.short_name === "143");
+                    const isDir = (d.trip?.headsign || "").toLowerCase().includes(config.filterDir.toLowerCase());
+                    return is143 && isDir;
+                });
+
+                renderList(container, filtered);
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = `<div class="msg error">Chyba načítání</div>`;
+            }
+        }
+
+        function renderList(container, data) {
+            container.innerHTML = "";
+            if (data.length === 0) { container.innerHTML = '<div class="msg">Žádné spoje</div>'; return; }
+            
+            data.sort((a, b) => new Date(a.departure_timestamp.predicted) - new Date(b.departure_timestamp.predicted));
+            
+            data.slice(0, 3).forEach(d => {
+                const time = new Date(d.departure_timestamp.predicted).toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'});
+                const delay = d.delay.minutes > 0 ? `<span style="color:#f55">(+${d.delay.minutes})</span>` : '';
+                container.innerHTML += `
+                    <div class="row">
+                        <div><span class="bus-number">143</span> <small>${d.trip.headsign}</small></div>
+                        <div style="text-align:right"><span class="time-big">${time}</span> <small>${delay}</small></div>
+                    </div>`;
+            });
+        }
+
+        updateData();
+        setInterval(updateData, 30000);
+    </script>
+</body>
+</html>
