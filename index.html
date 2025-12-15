@@ -199,16 +199,34 @@
         }
 
         async function fetchStopData(stop) {
-            const url = `${PROXY_URL}?names[]=${encodeURIComponent(stop.name)}&mode=departures&limit=30`;
+            // ZVÝŠEN LIMIT NA 200, ABYCHOM NAŠLI 143 MEZI OSTATNÍMI AUTOBUSY
+            const url = `${PROXY_URL}?names[]=${encodeURIComponent(stop.name)}&mode=departures&limit=200`;
+            const listElement = document.getElementById(`list-${stop.id}`);
+
             try {
                 const res = await fetch(url);
+                
+                // 1. KONTROLA, ZDA SERVER NEHLÁSÍ CHYBU
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`Chyba serveru: ${res.status} (${text})`);
+                }
+
                 const json = await res.json();
+
+                // 2. KONTROLA CHYBY Z GOLEMIA
+                if (json.error || json.error_message) {
+                    throw new Error(json.error_message || "Chyba API");
+                }
+
                 const raw = json.departures || (Array.isArray(json) ? json : []);
                 
-                // Filtrace
+                // 3. FILTRACE
                 stop.data = raw.filter(d => {
                     const is143 = (d.route?.short_name === "143");
-                    const isDir = (d.trip?.headsign || "").toLowerCase().includes(stop.dir.toLowerCase());
+                    // Ošetření, kdyby headsign neexistoval
+                    const headsign = (d.trip?.headsign || "").toLowerCase();
+                    const isDir = headsign.includes(stop.dir.toLowerCase());
                     return is143 && isDir;
                 });
                 
@@ -216,6 +234,8 @@
 
             } catch (e) {
                 console.error(e);
+                // Vypíšeme chybu přímo do karty, abys viděl, co se děje
+                listElement.innerHTML = `<div class="msg error" style="color:orange; font-size:11px">⚠️ ${e.message}</div>`;
             }
         }
 
