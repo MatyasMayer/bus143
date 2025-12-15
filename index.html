@@ -120,10 +120,17 @@
                 let relativeText = `za ${minutesLeft} min`;
                 if (minutesLeft <= 0) relativeText = "<b style='color:#fff'>TEĎ</b>";
                 if (minutesLeft < -1) relativeText = "Odjel";
+
                 container.innerHTML += `
                     <div class="row">
-                        <div><span class="bus-number">143</span> <small>${d.trip.headsign}</small></div>
-                        <div style="text-align:right"><span class="time-big">${time}</span> <small>${delay}</small></div>
+                        <div>
+                            <span class="bus-number">143</span> 
+                            <small style="color:#bbb">${d.trip.headsign}</small>
+                        </div>
+                        <div style="text-align:right">
+                            <div class="time-big" style="color:${timeColor}">${timeStr}</div>
+                            <div class="time-small">${relativeText} ${delayHtml}</div>
+                        </div>
                     </div>`;
             });
         }
