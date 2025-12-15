@@ -98,8 +98,28 @@
             data.sort((a, b) => new Date(a.departure_timestamp.predicted) - new Date(b.departure_timestamp.predicted));
             
             data.slice(0, 3).forEach(d => {
-                const time = new Date(d.departure_timestamp.predicted).toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'});
-                const delay = d.delay.minutes > 0 ? `<span style="color:#f55">(+${d.delay.minutes})</span>` : '';
+                const predictedTime = new Date(d.departure_timestamp.predicted);
+                const now = new Date();
+                
+                const diffMs = predictedTime - now;
+                const minutesLeft = Math.floor(diffMs / 60000);
+
+                const timeStr = predictedTime.toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'});
+
+                let delayMin = 0;
+                if (d.delay && typeof d.delay.minutes === 'number') delayMin = d.delay.minutes;
+                
+                let delayHtml = "";
+                let timeColor = "#4cd964";
+
+                if (delayMin > 1) {
+                    delayHtml = `<span style="color:#ff4444; font-weight:bold">(+${delayMin} min)</span>`;
+                    timeColor = "#ff4444";
+                }
+
+                let relativeText = `za ${minutesLeft} min`;
+                if (minutesLeft <= 0) relativeText = "<b style='color:#fff'>TEĎ</b>";
+                if (minutesLeft < -1) relativeText = "Odjel";
                 container.innerHTML += `
                     <div class="row">
                         <div><span class="bus-number">143</span> <small>${d.trip.headsign}</small></div>
