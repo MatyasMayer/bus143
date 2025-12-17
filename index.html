@@ -261,9 +261,12 @@
                 const depDate = new Date(d.departure_timestamp.predicted);
                 const arrDate = new Date(depDate.getTime() + (stop.travelTime * 60000));
 
-                const timeOpts = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
-                const depTimeStr = depDate.toLocaleTimeString('cs-CZ', timeOpts);
-                const arrTimeStr = arrDate.toLocaleTimeString('cs-CZ', timeOpts);
+                const depFloored = new Date(Math.floor(depDate.getTime() / 60000) * 60000);
+                const arrFloored = new Date(Math.floor(arrDate.getTime() / 60000) * 60000);
+
+                const timeOpts = { hour: '2-digit', minute: '2-digit'};
+                const depTimeStr = depFloored.toLocaleTimeString('cs-CZ', timeOpts);
+                const arrTimeStr = arrFloored.toLocaleTimeString('cs-CZ', timeOpts);
 
                 const delayMin = (d.delay && d.delay.minutes) ? d.delay.minutes : 0;
                 
