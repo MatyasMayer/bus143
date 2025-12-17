@@ -260,28 +260,33 @@
 
                 const depDate = new Date(d.departure_timestamp.predicted);
                 const arrDate = new Date(depDate.getTime() + (stop.travelTime * 60000));
-                const arrTime = arrDate.toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'});
 
-                const predicted = new Date(d.departure_timestamp.predicted).toISOString();
-                const delay = (d.delay && d.delay.minutes) ? d.delay.minutes : 0;
+                const timeOpts = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                const depTimeStr = depDate.toLocaleTimeString('cs-CZ', timeOpts);
+                const arrTimeStr = arrDate.toLocaleTimeString('cs-CZ', timeOpts);
+
+                const delayMin = (d.delay && d.delay.minutes) ? d.delay.minutes : 0;
                 
                 let delayHtml = "";
-                let color = "#4cd964";
-                if(delay > 1) { 
-                    delayHtml = `<span class="delay-late">(+${delay} min)</span>`;
-                    color = "#ff4444";
+                let timeColor = "#4cd964"; 
+
+                if (delayMin > 0) { 
+                    delayHtml = `<span class="delay-late">(+${delayMin} min)</span>`;
+                    timeColor = "#ff4444";
                 }
 
                 html += `
-                <div class="row" data-time="${predicted}">
+                <div class="row" data-time="${d.departure_timestamp.predicted}">
                     <div>
                         <span class="bus-number">143</span> 
                         <span class="headsign">${d.trip.headsign}</span>
-                        <div class="arrival-info">🏁 Příjezd: ${arrTime}</div>
+                        <div class="arrival-info">
+                            🏁 Příjezd: <span style="color:${timeColor}; font-weight:bold">${arrTimeStr}</span>
+                        </div>
                     </div>
                     <div class="time-group">
-                        <div class="time-big" style="color:${color}">
-                            ${new Date(predicted).toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'})}
+                        <div class="time-big" style="color:${timeColor}">
+                        ${depTimeStr}
                         </div>
                         <div class="time-small">
                             <span class="countdown">...</span> ${delayHtml}
