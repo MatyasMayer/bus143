@@ -55,6 +55,8 @@
         .bus-number { background: #007bff; color: white; padding: 3px 8px; border-radius: 6px; font-weight: bold; font-size: 14px; margin-right: 8px; }
         .headsign { color: #ccc; font-size: 13px; }
 
+        .arrival-info{ font-size: 11px; color: #888; margin-top: 4px; display: flex; align-items: center; gap: 4px;}
+
         .time-group { text-align: right; }
         .time-big { font-weight: bold; font-size: 18px; color: #4cd964; }
         .time-small { font-size: 12px; color: #888; margin-top: 2px; }
@@ -96,6 +98,7 @@
                 dir: 'Strahov', // Filtr směru
                 lat: 50.100900, 
                 lon: 14.397078,
+                travelTime: 13,
                 data: [] // Tady se uloží stažená data
             },
             { 
@@ -104,6 +107,7 @@
                 dir: 'Strahov', 
                 lat: 50.098800, 
                 lon: 14.396349,
+                travelTime: 11,
                 data: []
             },
             { 
@@ -112,6 +116,7 @@
                 dir: 'Dejvická', 
                 lat: 50.076632, 
                 lon: 14.384214,
+                travelTime: 13,
                 data: []
             }
         ];
@@ -274,6 +279,10 @@
 
             let html = "";
             stop.data.slice(0, 3).forEach(d => {
+                //Výpočet příjezdu : Čas odjezdu + Doba jízdy
+                const depDate = new Date(d.departure_timestamp.predicted);
+                const arrDate = new Date(depDate.getTime() + (stop.travelTime * 60000));
+                const arrTime = arrDate.toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'});
                 // Výpočty si uložíme do atributů pro updateTimeUI
                 const predicted = new Date(d.departure_timestamp.predicted).toISOString();
                 const delay = (d.delay && d.delay.minutes) ? d.delay.minutes : 0;
@@ -291,6 +300,7 @@
                     <div>
                         <span class="bus-number">143</span> 
                         <span class="headsign">${d.trip.headsign}</span>
+                        <div class="arrival-info">🏁 Příjezd: ${arrTime}</div>
                     </div>
                     <div class="time-group">
                         <div class="time-big" style="color:${color}">
