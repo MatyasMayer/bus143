@@ -17,7 +17,6 @@
 
         h1 { color: #00d2ff; margin: 10px 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; }
 
-        /* Kontejner pro dynamické karty */
         #cards-container { width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px; }
 
         .card {
@@ -27,12 +26,11 @@
             transition: transform 0.3s ease, border-color 0.3s ease;
         }
 
-        /* Styl pro nejbližší zastávku */
         .card.nearest {
             border: 2px solid #00d2ff;
             transform: scale(1.02);
             box-shadow: 0 0 20px rgba(0, 210, 255, 0.2);
-            order: -1; /* Vždy nahoře */
+            order: -1; 
         }
 
         .card-header {
@@ -69,7 +67,6 @@
         .dot { width: 8px; height: 8px; background: #555; border-radius: 50%; }
         .dot.active { background: #4cd964; box-shadow: 0 0 5px #4cd964; }
 
-        /* Animace pro TEĎ */
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
@@ -87,19 +84,17 @@
     </div>
 
     <script>
-        // === KONFIGURACE ===
         const PROXY_URL = '/.netlify/functions/api'; 
         
-        // Zastávky včetně GPS souřadnic
         let STOPS = [
             { 
                 id: 'dejvicka', 
                 name: 'Dejvická', 
-                dir: 'Strahov', // Filtr směru
+                dir: 'Strahov', 
                 lat: 50.100900, 
                 lon: 14.397078,
                 travelTime: 13,
-                data: [] // Tady se uloží stažená data
+                data: []
             },
             { 
                 id: 'kulatak', 
@@ -121,18 +116,15 @@
             }
         ];
 
-        // === 1. START APLIKACE ===
         async function init() {
-            renderCards(); // Vykreslit prázdné karty
-            getUserLocation(); // Zkusit najít polohu
-            fetchAllData(); // Stáhnout data
+            renderCards();
+            getUserLocation();
+            fetchAllData(); 
             
-            // Intervaly
-            setInterval(fetchAllData, 30000); // Data každých 30s
-            setInterval(updateTimeUI, 1000); // Odpočet každou sekundu
+            setInterval(fetchAllData, 30000); 
+            setInterval(updateTimeUI, 1000); 
         }
 
-        // === 2. GEOLOKACE A ŘAZENÍ ===
         function getUserLocation() {
             if (!navigator.geolocation) {
                 updateStatus("GPS nedostupné", false);
@@ -152,22 +144,18 @@
         }
 
         function sortStopsByDistance(userLat, userLon) {
-            // Výpočet vzdálenosti pro každou zastávku
             STOPS.forEach(stop => {
                 stop.distance = getDistanceFromLatLonInKm(userLat, userLon, stop.lat, stop.lon);
             });
 
-            // Seřadit: nejmenší vzdálenost první
             STOPS.sort((a, b) => a.distance - b.distance);
 
-            // Překreslit pořadí karet (jen v DOMu)
             const container = document.getElementById('cards-container');
             STOPS.forEach((stop, index) => {
                 const card = document.getElementById(`card-${stop.id}`);
                 if (card) {
-                    container.appendChild(card); // Přesun na konec = řazení
+                    container.appendChild(card); 
                     
-                    // Označit nejbližší (pokud je blíž než 1km)
                     if (index === 0 && stop.distance < 1.5) {
                         card.classList.add('nearest');
                     } else {
@@ -177,9 +165,8 @@
             });
         }
 
-        // Haversine formula (matematika pro vzdálenost GPS)
         function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-            var R = 6371; // Radius Země v km
+            var R = 6371; 
             var dLat = deg2rad(lat2-lat1);  
             var dLon = deg2rad(lon2-lon1); 
             var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -196,7 +183,6 @@
             if(active) dot.classList.add('active'); else dot.classList.remove('active');
         }
 
-        // === 3. STAHOVÁNÍ DAT ===
         async function fetchAllData() {
             for (let stop of STOPS) {
                 fetchStopData(stop);
@@ -204,14 +190,12 @@
         }
 
         async function fetchStopData(stop) {
-            // ZVÝŠEN LIMIT NA 200, ABYCHOM NAŠLI 143 MEZI OSTATNÍMI AUTOBUSY
             const url = `${PROXY_URL}?names[]=${encodeURIComponent(stop.name)}&mode=departures&limit=200`;
             const listElement = document.getElementById(`list-${stop.id}`);
 
             try {
                 const res = await fetch(url);
                 
-                // 1. KONTROLA, ZDA SERVER NEHLÁSÍ CHYBU
                 if (!res.ok) {
                     const text = await res.text();
                     throw new Error(`Chyba serveru: ${res.status} (${text})`);
@@ -219,17 +203,14 @@
 
                 const json = await res.json();
 
-                // 2. KONTROLA CHYBY Z GOLEMIA
                 if (json.error || json.error_message) {
                     throw new Error(json.error_message || "Chyba API");
                 }
 
                 const raw = json.departures || (Array.isArray(json) ? json : []);
                 
-                // 3. FILTRACE
                 stop.data = raw.filter(d => {
                     const is143 = (d.route?.short_name === "143");
-                    // Ošetření, kdyby headsign neexistoval
                     const headsign = (d.trip?.headsign || "").toLowerCase();
                     const isDir = headsign.includes(stop.dir.toLowerCase());
                     return is143 && isDir;
@@ -239,12 +220,10 @@
 
             } catch (e) {
                 console.error(e);
-                // Vypíšeme chybu přímo do karty, abys viděl, co se děje
                 listElement.innerHTML = `<div class="msg error" style="color:orange; font-size:11px">⚠️ ${e.message}</div>`;
             }
         }
 
-        // === 4. VYKRESLOVÁNÍ ===
         function renderCards() {
             const container = document.getElementById('cards-container');
             container.innerHTML = "";
@@ -274,20 +253,18 @@
                 return;
             }
 
-            // Seřadit podle času
             stop.data.sort((a, b) => new Date(a.departure_timestamp.predicted) - new Date(b.departure_timestamp.predicted));
 
             let html = "";
             stop.data.slice(0, 3).forEach(d => {
-                //Výpočet příjezdu : Čas odjezdu + Doba jízdy
+
                 const depDate = new Date(d.departure_timestamp.predicted);
                 const arrDate = new Date(depDate.getTime() + (stop.travelTime * 60000));
                 const arrTime = arrDate.toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'});
-                // Výpočty si uložíme do atributů pro updateTimeUI
+
                 const predicted = new Date(d.departure_timestamp.predicted).toISOString();
                 const delay = (d.delay && d.delay.minutes) ? d.delay.minutes : 0;
                 
-                // Statické HTML (čas se dopočítá v updateTimeUI)
                 let delayHtml = "";
                 let color = "#4cd964";
                 if(delay > 1) { 
@@ -313,10 +290,9 @@
                 </div>`;
             });
             list.innerHTML = html;
-            updateTimeUI(); // Hned přepočítat
+            updateTimeUI(); 
         }
 
-        // Funkce pro "tikatka" (odpočet) bez nutnosti stahovat data
         function updateTimeUI() {
             const now = new Date();
             document.querySelectorAll('.row').forEach(row => {
